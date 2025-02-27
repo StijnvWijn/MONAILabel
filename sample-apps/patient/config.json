@@ -1,8 +1,8 @@
 {
   "models": ["segmentation", "sam"],
   "auth": {
-    "enabled": true,
+    "enable": true,
     "client_id": "monailabel-client",
-    "realm_uri": "http://localhost:8080/auth/realms/monailabel"
+    "realm_uri": "http://localhost:8000/auth/realms/monailabel"
   }
 }
