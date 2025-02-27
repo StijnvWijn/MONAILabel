@@ -111,13 +111,13 @@ class MyPatientApp(MONAILabelApp):
                     infers[k] = v
 
         # Add SAM support
-        sam_model = Sam2InferTask(
-            self.model_dir,
-            type="segmentation",
-            dimension=3,
-            description="Segment Anything Model (SAM) for interactive segmentation",
-        )
-        infers["sam"] = sam_model
+        # sam_model = Sam2InferTask(
+        #     self.model_dir,
+        #     type="segmentation",
+        #     dimension=3,
+        #     description="Segment Anything Model (SAM) for interactive segmentation",
+        # )
+        # infers["sam"] = sam_model
 
         return infers
 
