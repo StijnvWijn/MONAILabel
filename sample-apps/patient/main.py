@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Dict
 import json
+import lib.configs
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
