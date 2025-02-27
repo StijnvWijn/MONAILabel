@@ -2,20 +2,7 @@
   "models": ["segmentation", "sam"],
   "auth": {
     "enabled": true,
-    "auth_type": "password",
-    "users": {
-      "admin": {
-        "password": "admin123",
-        "roles": ["admin", "reviewer", "annotator", "user"]
-      },
-      "reviewer": {
-        "password": "reviewer123", 
-        "roles": ["reviewer", "annotator", "user"]
-      },
-      "annotator": {
-        "password": "annotator123",
-        "roles": ["annotator", "user"]
-      }
-    }
+    "client_id": "monailabel-client",
+    "realm_uri": "http://localhost:8080/auth/realms/monailabel"
   }
 }

@@ -6,6 +6,10 @@ STUDIES_DIR=${1:-"/path/to/your/studies"}
 
 # Set environment variables for authentication
 export MONAI_LABEL_AUTH_ENABLE=true
+# For basic authentication
+export MONAI_LABEL_AUTH_CLIENT_ID=monailabel-client
+export MONAI_LABEL_AUTH_USERNAME=admin
+export MONAI_LABEL_AUTH_PASSWORD=password123
 
 # Start the server with the patient app
 monailabel start_server \
