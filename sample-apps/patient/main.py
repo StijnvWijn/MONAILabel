@@ -3,6 +3,9 @@ import os
 from typing import Dict
 import json
 import lib.configs
+from lib.activelearning import Last
+from lib.infers.deepgrow_pipeline import InferDeepgrowPipeline
+from lib.infers.vertebra_pipeline import InferVertebraPipeline
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
@@ -13,6 +16,11 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.planner import HeuristicPlanner
 from monailabel.datastore.patient import PatientDatastore
 from monailabel.sam2.infer import Sam2InferTask
+from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.sam2.utils import is_sam2_module_available
+from monailabel.tasks.activelearning.first import First
+from monailabel.tasks.activelearning.random import Random
 
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import get_bundle_models, strtobool
