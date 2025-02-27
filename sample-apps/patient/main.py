@@ -88,12 +88,16 @@ class MyPatientApp(MONAILabelApp):
         )
 
     def init_datastore(self):
-        return PatientDatastore(
+        logger.info(f"Init PatientDatastore for: {self.studies}")
+        datastore = PatientDatastore(
             datastore_path=self.studies,
             extensions=self.conf.get("extensions", ["*.nii.gz", "*.nii"]),
             auto_reload=True,
             read_only=False,
         )
+        if self.heuristic_planner:
+            self.planner.run(datastore)
+        return datastore
 
     def init_infers(self) -> Dict[str, InferTask]:
         infers: Dict[str, InferTask] = {}

@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional, Union
 from monailabel.datastore.local import LocalDatastore
 
 logger = logging.getLogger(__name__)
@@ -9,11 +9,17 @@ class PatientDatastore(LocalDatastore):
     def __init__(
         self,
         datastore_path: str,
-        extensions=None,
-        auto_reload=True,
-        read_only=False,
+        extensions: Optional[List[str]] = None,
+        auto_reload: bool = True,
+        read_only: bool = False,
     ):
-        super().__init__(datastore_path, extensions, auto_reload, read_only)
+        # Pass all parameters explicitly to avoid issues with default arguments
+        super().__init__(
+            datastore_path=datastore_path,
+            extensions=extensions if extensions else None,
+            auto_reload=auto_reload,
+            read_only=read_only
+        )
         self.patient_images: Dict[str, List[str]] = {}
         self._init_patient_mapping()
 
@@ -24,6 +30,7 @@ class PatientDatastore(LocalDatastore):
             if patient_id not in self.patient_images:
                 self.patient_images[patient_id] = []
             self.patient_images[patient_id].append(image_id)
+        logger.info(f"Found {len(self.patient_images)} patients with {len(self.image_ids())} total images")
 
     def get_patient_images(self, patient_id: str) -> List[str]:
         return self.patient_images.get(patient_id, [])
