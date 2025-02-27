@@ -13,7 +13,6 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.utils.others.planner import HeuristicPlanner
 from monailabel.datastore.patient import PatientDatastore
 from monailabel.sam2.infer import Sam2InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
@@ -22,8 +21,12 @@ from monailabel.sam2.utils import is_sam2_module_available
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 
+# bundle
+from monailabel.tasks.infer.bundle import BundleInferTask
+from monailabel.tasks.train.bundle import BundleTrainTask
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import get_bundle_models, strtobool
+from monailabel.utils.others.planner import HeuristicPlanner
 
 logger = logging.getLogger(__name__)
 
@@ -107,95 +110,95 @@ class MyPatientApp(MONAILabelApp):
             self.planner.run(datastore)
         return datastore
     
-    def init_infers(self) -> Dict[str, InferTask]:
-        infers: Dict[str, InferTask] = {}
+    # def init_infers(self) -> Dict[str, InferTask]:
+    #     infers: Dict[str, InferTask] = {}
 
-        #################################################
-        # Models
-        #################################################
-        for n, task_config in self.models.items():
-            c = task_config.infer()
-            c = c if isinstance(c, dict) else {n: c}
-            for k, v in c.items():
-                logger.info(f"+++ Adding Inferer:: {k} => {v}")
-                infers[k] = v
+    #     #################################################
+    #     # Models
+    #     #################################################
+    #     for n, task_config in self.models.items():
+    #         c = task_config.infer()
+    #         c = c if isinstance(c, dict) else {n: c}
+    #         for k, v in c.items():
+    #             logger.info(f"+++ Adding Inferer:: {k} => {v}")
+    #             infers[k] = v
 
-        #################################################
-        # Bundle Models
-        #################################################
-        if self.bundles:
-            for n, b in self.bundles.items():
-                i = BundleInferTask(b, self.conf)
-                logger.info(f"+++ Adding Bundle Inferer:: {n} => {i}")
-                infers[n] = i
+    #     #################################################
+    #     # Bundle Models
+    #     #################################################
+    #     if self.bundles:
+    #         for n, b in self.bundles.items():
+    #             i = BundleInferTask(b, self.conf)
+    #             logger.info(f"+++ Adding Bundle Inferer:: {n} => {i}")
+    #             infers[n] = i
 
-        #################################################
-        # Scribbles
-        #################################################
-        if self.scribbles:
-            from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
+    #     #################################################
+    #     # Scribbles
+    #     #################################################
+    #     if self.scribbles:
+    #         from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 
-            infers.update(
-                {
-                    "Histogram+GraphCut": HistogramBasedGraphCut(
-                        intensity_range=(-300, 200, 0.0, 1.0, True),
-                        pix_dim=(2.5, 2.5, 5.0),
-                        lamda=1.0,
-                        sigma=0.1,
-                        num_bins=64,
-                        labels=task_config.labels,
-                    ),
-                    "GMM+GraphCut": GMMBasedGraphCut(
-                        intensity_range=(-300, 200, 0.0, 1.0, True),
-                        pix_dim=(2.5, 2.5, 5.0),
-                        lamda=5.0,
-                        sigma=0.5,
-                        num_mixtures=20,
-                        labels=task_config.labels,
-                    ),
-                }
-            )
+    #         infers.update(
+    #             {
+    #                 "Histogram+GraphCut": HistogramBasedGraphCut(
+    #                     intensity_range=(-300, 200, 0.0, 1.0, True),
+    #                     pix_dim=(2.5, 2.5, 5.0),
+    #                     lamda=1.0,
+    #                     sigma=0.1,
+    #                     num_bins=64,
+    #                     labels=task_config.labels,
+    #                 ),
+    #                 "GMM+GraphCut": GMMBasedGraphCut(
+    #                     intensity_range=(-300, 200, 0.0, 1.0, True),
+    #                     pix_dim=(2.5, 2.5, 5.0),
+    #                     lamda=5.0,
+    #                     sigma=0.5,
+    #                     num_mixtures=20,
+    #                     labels=task_config.labels,
+    #                 ),
+    #             }
+    #         )
 
-        #################################################
-        # SAM
-        #################################################
-        if is_sam2_module_available() and self.sam:
-            from monailabel.sam2.infer import Sam2InferTask
+    #     #################################################
+    #     # SAM
+    #     #################################################
+    #     if is_sam2_module_available() and self.sam:
+    #         from monailabel.sam2.infer import Sam2InferTask
 
-            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=2)
-            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=3)
+    #         infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=2)
+    #         infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=3)
 
-        #################################################
-        # Pipeline based on existing infers
-        #################################################
-        if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
-            infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
-                path=self.models["deepgrow_2d"].path,
-                network=self.models["deepgrow_2d"].network,
-                model_3d=infers["deepgrow_3d"],
-                description="Combines Clara Deepgrow 2D and 3D models",
-            )
+    #     #################################################
+    #     # Pipeline based on existing infers
+    #     #################################################
+    #     if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
+    #         infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
+    #             path=self.models["deepgrow_2d"].path,
+    #             network=self.models["deepgrow_2d"].network,
+    #             model_3d=infers["deepgrow_3d"],
+    #             description="Combines Clara Deepgrow 2D and 3D models",
+    #         )
 
-        #################################################
-        # Pipeline based on existing infers for vertebra segmentation
-        # Stages:
-        # 1/ localization spine
-        # 2/ localization vertebra
-        # 3/ segmentation vertebra
-        #################################################
-        if (
-            infers.get("localization_spine")
-            and infers.get("localization_vertebra")
-            and infers.get("segmentation_vertebra")
-        ):
-            infers["vertebra_pipeline"] = InferVertebraPipeline(
-                task_loc_spine=infers["localization_spine"],  # first stage
-                task_loc_vertebra=infers["localization_vertebra"],  # second stage
-                task_seg_vertebra=infers["segmentation_vertebra"],  # third stage
-                description="Combines three stage for vertebra segmentation",
-            )
-        logger.info(infers)
-        return infers
+    #     #################################################
+    #     # Pipeline based on existing infers for vertebra segmentation
+    #     # Stages:
+    #     # 1/ localization spine
+    #     # 2/ localization vertebra
+    #     # 3/ segmentation vertebra
+    #     #################################################
+    #     if (
+    #         infers.get("localization_spine")
+    #         and infers.get("localization_vertebra")
+    #         and infers.get("segmentation_vertebra")
+    #     ):
+    #         infers["vertebra_pipeline"] = InferVertebraPipeline(
+    #             task_loc_spine=infers["localization_spine"],  # first stage
+    #             task_loc_vertebra=infers["localization_vertebra"],  # second stage
+    #             task_seg_vertebra=infers["segmentation_vertebra"],  # third stage
+    #             description="Combines three stage for vertebra segmentation",
+    #         )
+    #     logger.info(infers)
+    #     return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
         trainers: Dict[str, TrainTask] = {}
@@ -264,24 +267,25 @@ class MyPatientApp(MONAILabelApp):
 
         logger.info(f"Active Learning Scoring Methods:: {list(methods.keys())}")
         return methods
-    # def init_infers(self) -> Dict[str, InferTask]:
-    #     infers: Dict[str, InferTask] = {}
+    
+    def init_infers(self) -> Dict[str, InferTask]:
+        infers: Dict[str, InferTask] = {}
 
-    #     if self.models:
-    #         for n, task_config in self.models.items():
-    #             c = task_config.infer()
-    #             c = c if isinstance(c, dict) else {n: c}
-    #             for k, v in c.items():
-    #                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
-    #                 infers[k] = v
+        if self.models:
+            for n, task_config in self.models.items():
+                c = task_config.infer()
+                c = c if isinstance(c, dict) else {n: c}
+                for k, v in c.items():
+                    logger.info(f"+++ Adding Inferer:: {k} => {v}")
+                    infers[k] = v
 
-    #     # Add SAM support
-    #     # sam_model = Sam2InferTask(
-    #     #     self.model_dir,
-    #     #     type="segmentation",
-    #     #     dimension=3,
-    #     #     description="Segment Anything Model (SAM) for interactive segmentation",
-    #     # )
-    #     # infers["sam"] = sam_model
+        # Add SAM support
+        # sam_model = Sam2InferTask(
+        #     self.model_dir,
+        #     type="segmentation",
+        #     dimension=3,
+        #     description="Segment Anything Model (SAM) for interactive segmentation",
+        # )
+        # infers["sam"] = sam_model
 
-    #     return infers
+        return infers
