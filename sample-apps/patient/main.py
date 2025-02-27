@@ -98,40 +98,182 @@ class MyPatientApp(MONAILabelApp):
         if self.heuristic_planner:
             self.planner.run(datastore)
         return datastore
-
+    
     def init_infers(self) -> Dict[str, InferTask]:
         infers: Dict[str, InferTask] = {}
 
-        if self.models:
-            for n, task_config in self.models.items():
-                c = task_config.infer()
-                c = c if isinstance(c, dict) else {n: c}
-                for k, v in c.items():
-                    logger.info(f"+++ Adding Inferer:: {k} => {v}")
-                    infers[k] = v
+        #################################################
+        # Models
+        #################################################
+        for n, task_config in self.models.items():
+            c = task_config.infer()
+            c = c if isinstance(c, dict) else {n: c}
+            for k, v in c.items():
+                logger.info(f"+++ Adding Inferer:: {k} => {v}")
+                infers[k] = v
 
-        # Add SAM support
-        # sam_model = Sam2InferTask(
-        #     self.model_dir,
-        #     type="segmentation",
-        #     dimension=3,
-        #     description="Segment Anything Model (SAM) for interactive segmentation",
-        # )
-        # infers["sam"] = sam_model
+        #################################################
+        # Bundle Models
+        #################################################
+        if self.bundles:
+            for n, b in self.bundles.items():
+                i = BundleInferTask(b, self.conf)
+                logger.info(f"+++ Adding Bundle Inferer:: {n} => {i}")
+                infers[n] = i
 
+        #################################################
+        # Scribbles
+        #################################################
+        if self.scribbles:
+            from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
+
+            infers.update(
+                {
+                    "Histogram+GraphCut": HistogramBasedGraphCut(
+                        intensity_range=(-300, 200, 0.0, 1.0, True),
+                        pix_dim=(2.5, 2.5, 5.0),
+                        lamda=1.0,
+                        sigma=0.1,
+                        num_bins=64,
+                        labels=task_config.labels,
+                    ),
+                    "GMM+GraphCut": GMMBasedGraphCut(
+                        intensity_range=(-300, 200, 0.0, 1.0, True),
+                        pix_dim=(2.5, 2.5, 5.0),
+                        lamda=5.0,
+                        sigma=0.5,
+                        num_mixtures=20,
+                        labels=task_config.labels,
+                    ),
+                }
+            )
+
+        #################################################
+        # SAM
+        #################################################
+        if is_sam2_module_available() and self.sam:
+            from monailabel.sam2.infer import Sam2InferTask
+
+            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=2)
+            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=3)
+
+        #################################################
+        # Pipeline based on existing infers
+        #################################################
+        if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
+            infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
+                path=self.models["deepgrow_2d"].path,
+                network=self.models["deepgrow_2d"].network,
+                model_3d=infers["deepgrow_3d"],
+                description="Combines Clara Deepgrow 2D and 3D models",
+            )
+
+        #################################################
+        # Pipeline based on existing infers for vertebra segmentation
+        # Stages:
+        # 1/ localization spine
+        # 2/ localization vertebra
+        # 3/ segmentation vertebra
+        #################################################
+        if (
+            infers.get("localization_spine")
+            and infers.get("localization_vertebra")
+            and infers.get("segmentation_vertebra")
+        ):
+            infers["vertebra_pipeline"] = InferVertebraPipeline(
+                task_loc_spine=infers["localization_spine"],  # first stage
+                task_loc_vertebra=infers["localization_vertebra"],  # second stage
+                task_seg_vertebra=infers["segmentation_vertebra"],  # third stage
+                description="Combines three stage for vertebra segmentation",
+            )
+        logger.info(infers)
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
         trainers: Dict[str, TrainTask] = {}
-        # Add training tasks if needed
+        if strtobool(self.conf.get("skip_trainers", "false")):
+            return trainers
+        #################################################
+        # Models
+        #################################################
+        for n, task_config in self.models.items():
+            t = task_config.trainer()
+            if not t:
+                continue
+
+            logger.info(f"+++ Adding Trainer:: {n} => {t}")
+            trainers[n] = t
+
+        #################################################
+        # Bundle Models
+        #################################################
+        if self.bundles:
+            for n, b in self.bundles.items():
+                t = BundleTrainTask(b, self.conf)
+                if not t or not t.is_valid():
+                    continue
+
+                logger.info(f"+++ Adding Bundle Trainer:: {n} => {t}")
+                trainers[n] = t
+
         return trainers
 
     def init_strategies(self) -> Dict[str, Strategy]:
-        strategies: Dict[str, Strategy] = {}
-        # Add active learning strategies if needed  
+        strategies: Dict[str, Strategy] = {
+            "random": Random(),
+            "first": First(),
+            "last": Last(),
+        }
+
+        if strtobool(self.conf.get("skip_strategies", "true")):
+            return strategies
+
+        for n, task_config in self.models.items():
+            s = task_config.strategy()
+            if not s:
+                continue
+            s = s if isinstance(s, dict) else {n: s}
+            for k, v in s.items():
+                logger.info(f"+++ Adding Strategy:: {k} => {v}")
+                strategies[k] = v
+
+        logger.info(f"Active Learning Strategies:: {list(strategies.keys())}")
         return strategies
 
     def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
         methods: Dict[str, ScoringMethod] = {}
-        # Add scoring methods if needed
+        if strtobool(self.conf.get("skip_scoring", "true")):
+            return methods
+
+        for n, task_config in self.models.items():
+            s = task_config.scoring_method()
+            if not s:
+                continue
+            s = s if isinstance(s, dict) else {n: s}
+            for k, v in s.items():
+                logger.info(f"+++ Adding Scoring Method:: {k} => {v}")
+                methods[k] = v
+
+        logger.info(f"Active Learning Scoring Methods:: {list(methods.keys())}")
         return methods
+    # def init_infers(self) -> Dict[str, InferTask]:
+    #     infers: Dict[str, InferTask] = {}
+
+    #     if self.models:
+    #         for n, task_config in self.models.items():
+    #             c = task_config.infer()
+    #             c = c if isinstance(c, dict) else {n: c}
+    #             for k, v in c.items():
+    #                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
+    #                 infers[k] = v
+
+    #     # Add SAM support
+    #     # sam_model = Sam2InferTask(
+    #     #     self.model_dir,
+    #     #     type="segmentation",
+    #     #     dimension=3,
+    #     #     description="Segment Anything Model (SAM) for interactive segmentation",
+    #     # )
+    #     # infers["sam"] = sam_model
+
+    #     return infers
