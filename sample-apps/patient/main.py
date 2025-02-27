@@ -34,6 +34,17 @@ class MyPatientApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
         self.model_dir = os.path.join(app_dir, "model")
 
+        # Enable authentication
+        auth_config = self._load_auth_config(app_dir)
+        if auth_config:
+            import os
+            os.environ["MONAI_LABEL_AUTH_ENABLE"] = "true"
+            if auth_config.get("users"):
+                # Store users in environment for the auth system to use
+                os.environ["MONAI_LABEL_AUTH_USER_DB"] = json.dumps(auth_config.get("users"))
+            logger.info("Authentication enabled with user configuration loaded")
+        
+        # Continue with existing initialization
         configs = {}
         for c in get_class_names(lib.configs, "TaskConfig"):
             name = c.split(".")[-2].lower()
@@ -94,9 +105,21 @@ class MyPatientApp(MONAILabelApp):
             studies=studies,
             conf=conf,
             name=f"MONAILabel - Patient Analysis",
-            description="Deep learning models for multi-image patient analysis",
+            description="Deep learning models for multi-image patient analysis with authentication",
             version="0.1",
         )
+    
+    def _load_auth_config(self, app_dir):
+        """Load authentication configuration from config.json"""
+        config_file = os.path.join(app_dir, "config.json")
+        if os.path.exists(config_file):
+            try:
+                with open(config_file) as f:
+                    config = json.load(f)
+                    return config.get("auth", {})
+            except Exception as e:
+                logger.error(f"Error loading auth config: {e}")
+        return {}
 
     def init_datastore(self):
         logger.info(f"Init PatientDatastore for: {self.studies}")
@@ -110,96 +133,6 @@ class MyPatientApp(MONAILabelApp):
             self.planner.run(datastore)
         return datastore
     
-    # def init_infers(self) -> Dict[str, InferTask]:
-    #     infers: Dict[str, InferTask] = {}
-
-    #     #################################################
-    #     # Models
-    #     #################################################
-    #     for n, task_config in self.models.items():
-    #         c = task_config.infer()
-    #         c = c if isinstance(c, dict) else {n: c}
-    #         for k, v in c.items():
-    #             logger.info(f"+++ Adding Inferer:: {k} => {v}")
-    #             infers[k] = v
-
-    #     #################################################
-    #     # Bundle Models
-    #     #################################################
-    #     if self.bundles:
-    #         for n, b in self.bundles.items():
-    #             i = BundleInferTask(b, self.conf)
-    #             logger.info(f"+++ Adding Bundle Inferer:: {n} => {i}")
-    #             infers[n] = i
-
-    #     #################################################
-    #     # Scribbles
-    #     #################################################
-    #     if self.scribbles:
-    #         from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
-
-    #         infers.update(
-    #             {
-    #                 "Histogram+GraphCut": HistogramBasedGraphCut(
-    #                     intensity_range=(-300, 200, 0.0, 1.0, True),
-    #                     pix_dim=(2.5, 2.5, 5.0),
-    #                     lamda=1.0,
-    #                     sigma=0.1,
-    #                     num_bins=64,
-    #                     labels=task_config.labels,
-    #                 ),
-    #                 "GMM+GraphCut": GMMBasedGraphCut(
-    #                     intensity_range=(-300, 200, 0.0, 1.0, True),
-    #                     pix_dim=(2.5, 2.5, 5.0),
-    #                     lamda=5.0,
-    #                     sigma=0.5,
-    #                     num_mixtures=20,
-    #                     labels=task_config.labels,
-    #                 ),
-    #             }
-    #         )
-
-    #     #################################################
-    #     # SAM
-    #     #################################################
-    #     if is_sam2_module_available() and self.sam:
-    #         from monailabel.sam2.infer import Sam2InferTask
-
-    #         infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=2)
-    #         infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=3)
-
-    #     #################################################
-    #     # Pipeline based on existing infers
-    #     #################################################
-    #     if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
-    #         infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
-    #             path=self.models["deepgrow_2d"].path,
-    #             network=self.models["deepgrow_2d"].network,
-    #             model_3d=infers["deepgrow_3d"],
-    #             description="Combines Clara Deepgrow 2D and 3D models",
-    #         )
-
-    #     #################################################
-    #     # Pipeline based on existing infers for vertebra segmentation
-    #     # Stages:
-    #     # 1/ localization spine
-    #     # 2/ localization vertebra
-    #     # 3/ segmentation vertebra
-    #     #################################################
-    #     if (
-    #         infers.get("localization_spine")
-    #         and infers.get("localization_vertebra")
-    #         and infers.get("segmentation_vertebra")
-    #     ):
-    #         infers["vertebra_pipeline"] = InferVertebraPipeline(
-    #             task_loc_spine=infers["localization_spine"],  # first stage
-    #             task_loc_vertebra=infers["localization_vertebra"],  # second stage
-    #             task_seg_vertebra=infers["segmentation_vertebra"],  # third stage
-    #             description="Combines three stage for vertebra segmentation",
-    #         )
-    #     logger.info(infers)
-    #     return infers
-
     def init_trainers(self) -> Dict[str, TrainTask]:
         trainers: Dict[str, TrainTask] = {}
         if strtobool(self.conf.get("skip_trainers", "false")):
