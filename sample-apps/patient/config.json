@@ -1,8 +1,26 @@
 {
   "models": ["segmentation", "sam"],
   "auth": {
-    "enable": true,
-    "client_id": "monailabel-client",
-    "realm_uri": "http://localhost:8000/auth/realms/monailabel"
+    "users": {
+      "admin": {
+        "preferred_username": "admin",
+        "email": "admin@monailabel.test",
+        "name": "Admin User",
+        "password": "admin123",
+        "roles": ["monailabel-admin", "monailabel-user", "monailabel-annotator", "monailabel-reviewer"]
+      },
+      "user": {
+        "preferred_username": "user",
+        "email": "user@monailabel.test",
+        "password": "user123",
+        "roles": ["monailabel-user"]
+      },
+      "annotator": {
+        "preferred_username": "annotator",
+        "email": "annotator@monailabel.test",
+        "password": "annotator123",
+        "roles": ["monailabel-user", "monailabel-annotator"]
+      }
+    }
   }
 }

@@ -35,19 +35,7 @@ class MyPatientApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
 
         # Enable authentication via environment variables
-        auth_config = self._load_auth_config(app_dir)
-        if auth_config and auth_config.get("enabled", False):
-            # Use the existing MONAI Label authentication system
-            os.environ["MONAI_LABEL_AUTH_ENABLE"] = "true"
-            
-            # Optionally set other auth parameters from config
-            if auth_config.get("client_id"):
-                os.environ["MONAI_LABEL_AUTH_CLIENT_ID"] = auth_config.get("client_id")
-            
-            if auth_config.get("realm_uri"):
-                os.environ["MONAI_LABEL_AUTH_REALM_URI"] = auth_config.get("realm_uri")
-                
-            logger.info("Authentication enabled from config.json")
+        os.environ['MONAI_LABEL_AUTH_ENABLE'] = True
 
         # Continue with existing initialization
         configs = {}

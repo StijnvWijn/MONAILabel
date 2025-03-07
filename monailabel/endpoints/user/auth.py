@@ -10,9 +10,12 @@
 # limitations under the License.
 import logging
 from typing import List, Sequence, Union
+from datetime import datetime, timezone, timedelta
 
 import jwt
 import requests
+import json
+import os
 from cachetools import cached
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordBearer
@@ -27,14 +30,81 @@ logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
+# Local users cache
+_local_users: dict = None
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+def get_local_users() -> dict:
+    """Get users from config.json file"""
+    global _local_users
+    
+    if _local_users is not None:
+        return _local_users
+    
+    config_file = os.path.join(settings.MONAI_LABEL_APP_DIR, "config.json")
+    if not os.path.exists(config_file):
+        _local_users = {}
+        return _local_users
+    
+    try:
+        with open(config_file, "r") as f:
+            config = json.load(f)
+            auth_config = config.get("auth", {})
+            _local_users = auth_config.get("users", {})
+            return _local_users
+    except Exception as e:
+        logger.error(f"Error loading local users from config.json: {e}")
+        _local_users = {}
+        return _local_users
+
+
+def validate_local_user(username: str, password: str) -> dict:
+    """Validate user against local users in config.json"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    users = get_local_users()
+    user_info = users.get(username, None)
+    
+    if not user_info:
+        logger.error(f"User {username} not found in local users")
+        raise credentials_exception
+    
+    if user_info.get("password") == password:
+        return user_info
+    
+    logger.error(f"Invalid local username")
+    raise credentials_exception
+
+def create_local_token(username: str, user_info: dict) -> Token:
+    """Create a JWT token for a local user"""
+    
+    payload = {
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.MONAI_LABEL_SESSION_EXPIRY),
+        "iat": datetime.now(timezone.utc),
+        "sub": username,
+        settings.MONAI_LABEL_AUTH_TOKEN_USERNAME: username,
+        settings.MONAI_LABEL_AUTH_TOKEN_EMAIL: user_info.get("email", ""),
+        settings.MONAI_LABEL_AUTH_TOKEN_NAME: username,
+        "local_auth": True
+    }
+    
+    # Add roles based on config format
+    roles_key = settings.MONAI_LABEL_AUTH_TOKEN_ROLES.split("#")[0]
+    payload[roles_key] = user_info.get("roles", [])
+    
+    token = jwt.encode(payload, SECRET_KEY)
+    return Token(access_token=token, token_type="bearer")
 
 @cached(cache={})
 def get_public_key(realm_uri) -> str:
+    """Get the public key from the realm URI"""
     logger.info(f"Fetching public key for: {realm_uri}")
     r = requests.get(url=realm_uri, timeout=settings.MONAI_LABEL_AUTH_TIMEOUT)
     r.raise_for_status()
@@ -46,11 +116,17 @@ def get_public_key(realm_uri) -> str:
 
 @cached(cache={})
 def open_id_configuration(realm_uri):
+    """Get the OpenID configuration from the realm URI"""
     response = requests.get(
         url=f"{realm_uri}/.well-known/openid-configuration",
         timeout=settings.MONAI_LABEL_AUTH_TIMEOUT,
     )
-    return response.json()
+    try:
+        return response.json()
+    except requests.exceptions.JSONDecodeError as e:
+        logger.error(f"Error {e} occurred when loading retrieving token from {realm_uri}/.well-known/openid-configuration", exc_info=True)
+        logger.error(f"Response: {response}, have you set the correct realm URI?")
+        return {}
 
 
 def token_uri():
@@ -78,6 +154,7 @@ DEFAULT_USER = User(
 
 
 def from_token(token: str):
+    """Decode a JWT token and return a User object"""
     if not settings.MONAI_LABEL_AUTH_ENABLE:
         return DEFAULT_USER
 
@@ -86,8 +163,11 @@ def from_token(token: str):
         "verify_aud": False,
         "verify_exp": True,
     }
-
-    key = get_public_key(settings.MONAI_LABEL_AUTH_REALM_URI)
+    # If realm URI is set, use the public key from the realm, otherwise use the default secret key
+    if settings.MONAI_LABEL_AUTH_REALM_URI:
+        key = get_public_key(settings.MONAI_LABEL_AUTH_REALM_URI)
+    else:
+        key = SECRET_KEY
     payload = jwt.decode(token, key, options=options)
 
     username: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_USERNAME)

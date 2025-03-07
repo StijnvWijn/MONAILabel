@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from monailabel.config import settings
-from monailabel.endpoints.user.auth import Token, User, get_current_user, token_uri
+from monailabel.endpoints.user.auth import Token, User, get_current_user, token_uri, validate_local_user, create_local_token
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,14 @@ async def auth_enabled():
 async def access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     if not settings.MONAI_LABEL_AUTH_ENABLE:
         return {"access_token": None, "token_type": None}
-
+    
+    if not settings.MONAI_LABEL_AUTH_REALM_URI:
+        logger.debug("Trying to authenticate locally")
+        user_info = validate_local_user(form_data.username, form_data.password)
+        return create_local_token(user_info)
+        
+            
+    logger.debug(f"Trying to authenticate with server at {settings.MONAI_LABEL_AUTH_REALM_URI}")
     url = token_uri()
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     data = {
