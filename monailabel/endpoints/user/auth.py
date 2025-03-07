@@ -47,6 +47,7 @@ def get_local_users() -> dict:
     
     config_file = os.path.join(settings.MONAI_LABEL_APP_DIR, "config.json")
     if not os.path.exists(config_file):
+        logger.error(f"Config file not found at {config_file}, no local users available")
         _local_users = {}
         return _local_users
     
@@ -66,20 +67,18 @@ def validate_local_user(username: str, password: str) -> dict:
     """Validate user against local users in config.json"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate local credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     users = get_local_users()
     user_info = users.get(username, None)
     
     if not user_info:
-        logger.error(f"User {username} not found in local users")
         raise credentials_exception
     
     if user_info.get("password") == password:
         return user_info
     
-    logger.error(f"Invalid local username")
     raise credentials_exception
 
 def create_local_token(username: str, user_info: dict) -> Token:

@@ -47,7 +47,7 @@ async def access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     if not settings.MONAI_LABEL_AUTH_REALM_URI:
         logger.debug("Trying to authenticate locally")
         user_info = validate_local_user(form_data.username, form_data.password)
-        return create_local_token(user_info)
+        return create_local_token(form_data.username, user_info)
         
             
     logger.debug(f"Trying to authenticate with server at {settings.MONAI_LABEL_AUTH_REALM_URI}")

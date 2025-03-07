@@ -35,7 +35,7 @@ class MyPatientApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
 
         # Enable authentication via environment variables
-        os.environ['MONAI_LABEL_AUTH_ENABLE'] = True
+        os.environ['MONAI_LABEL_AUTH_ENABLE'] = 'true'
 
         # Continue with existing initialization
         configs = {}
