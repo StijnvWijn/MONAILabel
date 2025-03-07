@@ -26,10 +26,6 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-# https://auth0.com/
-# https://www.keycloak.org/
-
-
 @router.get("/", summary="Check If Auth is Enabled")
 async def auth_enabled():
     return {
@@ -49,7 +45,8 @@ async def access_token(form_data: OAuth2PasswordRequestForm = Depends()):
         user_info = validate_local_user(form_data.username, form_data.password)
         return create_local_token(form_data.username, user_info)
         
-            
+    # https://auth0.com/
+    # https://www.keycloak.org/ 
     logger.debug(f"Trying to authenticate with server at {settings.MONAI_LABEL_AUTH_REALM_URI}")
     url = token_uri()
     headers = {"Content-Type": "application/x-www-form-urlencoded"}

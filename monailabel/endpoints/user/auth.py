@@ -33,6 +33,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 # Local users cache
 _local_users: dict = None
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+LOCAL_ALGORITHM = "HS256"
 
 class Token(BaseModel):
     access_token: str
@@ -83,7 +84,6 @@ def validate_local_user(username: str, password: str) -> dict:
 
 def create_local_token(username: str, user_info: dict) -> Token:
     """Create a JWT token for a local user"""
-    
     payload = {
         "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.MONAI_LABEL_SESSION_EXPIRY),
         "iat": datetime.now(timezone.utc),
@@ -96,9 +96,9 @@ def create_local_token(username: str, user_info: dict) -> Token:
     
     # Add roles based on config format
     roles_key = settings.MONAI_LABEL_AUTH_TOKEN_ROLES.split("#")[0]
-    payload[roles_key] = user_info.get("roles", [])
+    payload[roles_key] = {"roles": user_info.get("roles", [])}
     
-    token = jwt.encode(payload, SECRET_KEY)
+    token = jwt.encode(payload, SECRET_KEY, algorithm=LOCAL_ALGORITHM)
     return Token(access_token=token, token_type="bearer")
 
 @cached(cache={})
@@ -165,9 +165,10 @@ def from_token(token: str):
     # If realm URI is set, use the public key from the realm, otherwise use the default secret key
     if settings.MONAI_LABEL_AUTH_REALM_URI:
         key = get_public_key(settings.MONAI_LABEL_AUTH_REALM_URI)
+        payload = jwt.decode(token, key, options=options)
     else:
         key = SECRET_KEY
-    payload = jwt.decode(token, key, options=options)
+        payload = jwt.decode(token, key, options=options, algorithms=[LOCAL_ALGORITHM])
 
     username: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_USERNAME)
     email: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_EMAIL)
