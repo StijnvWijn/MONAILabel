@@ -1,5 +1,5 @@
-
 import logging
+import requests
 from typing import Dict, List, Optional
 
 from MONAILabelLib import MONAILabelClient
@@ -13,6 +13,14 @@ class PatientClient:
     
     def __init__(self, client: MONAILabelClient):
         self.client = client
+    
+    def is_auth_enabled(self) -> bool:
+        """Check if authentication is enabled on the server"""
+        try:
+            return self.client.auth_enabled()
+        except Exception as e:
+            logger.error(f"Failed to check authentication status: {e}")
+            return False
     
     def get_all_patients(self) -> Dict[str, List[str]]:
         """

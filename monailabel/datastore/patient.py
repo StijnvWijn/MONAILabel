@@ -27,7 +27,7 @@ class PatientDatastore(LocalDatastore):
         # Group images by patient ID (assuming filenames start with patient ID)
         # Use list_images() instead of image_ids() - this is the method defined in LocalDatastore
         for image_id in self.list_images():
-            patient_id = image_id.split("_")[0]  # Assumes filename format: PATIENTID_*.nii.gz
+            patient_id = image_id.split("_")[-1]  # Assumes filename format: PATIENTID_*.nii.gz
             if patient_id not in self.patient_images:
                 self.patient_images[patient_id] = []
             self.patient_images[patient_id].append(image_id)

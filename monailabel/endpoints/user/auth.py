@@ -162,7 +162,7 @@ def from_token(token: str):
         "verify_aud": False,
         "verify_exp": True,
     }
-    # If realm URI is set, use the public key from the realm, otherwise use the default secret key
+    # If realm URI is set, assume the token is from an external provider and use the public key
     if settings.MONAI_LABEL_AUTH_REALM_URI:
         key = get_public_key(settings.MONAI_LABEL_AUTH_REALM_URI)
         payload = jwt.decode(token, key, options=options)

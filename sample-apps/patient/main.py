@@ -101,18 +101,6 @@ class MyPatientApp(MONAILabelApp):
             description="Deep learning models for multi-image patient analysis with authentication",
             version="0.1",
         )
-    
-    def _load_auth_config(self, app_dir):
-        """Load authentication configuration from config.json"""
-        config_file = os.path.join(app_dir, "config.json")
-        if os.path.exists(config_file):
-            try:
-                with open(config_file) as f:
-                    config = json.load(f)
-                    return config.get("auth", {})
-            except Exception as e:
-                logger.error(f"Error loading auth config: {e}")
-        return {}
 
     def init_datastore(self):
         logger.info(f"Init PatientDatastore for: {self.studies}")
