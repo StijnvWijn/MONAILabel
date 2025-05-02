@@ -32,7 +32,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 # Local users cache
 _local_users: dict = None
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+dev_secret_key = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 LOCAL_ALGORITHM = "HS256"
 
 class Token(BaseModel):
@@ -42,6 +42,7 @@ class Token(BaseModel):
 def get_local_users() -> dict:
     """Get users from config.json file"""
     global _local_users
+    global SECRET_KEY
     
     if _local_users is not None:
         return _local_users
@@ -57,6 +58,7 @@ def get_local_users() -> dict:
             config = json.load(f)
             auth_config = config.get("auth", {})
             _local_users = auth_config.get("users", {})
+            SECRET_KEY = auth_config.get("secret_key", dev_secret_key)
             return _local_users
     except Exception as e:
         logger.error(f"Error loading local users from config.json: {e}")
