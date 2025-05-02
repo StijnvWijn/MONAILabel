@@ -465,7 +465,7 @@ class BasicInferTask(InferTask):
                 network.to(torch.device(device))
 
                 if path:
-                    checkpoint = torch.load(path, map_location=torch.device(device))
+                    checkpoint = torch.load(path, map_location=torch.device(device), weights_only=False)
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
                     if set(self.network.state_dict().keys()) != set(model_state_dict.keys()):
                         logger.warning(

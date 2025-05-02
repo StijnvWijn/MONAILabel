@@ -25,6 +25,40 @@ LABELS_KEY = "label_names"
 
 logger = logging.getLogger(__name__)
 
+THRESHOLD_DIC = {
+    'Spleen': 0.5,
+    'Right Kidney': 0.5,
+    'Left Kidney': 0.5,
+    'Gall Bladder': 0.5,
+    'Esophagus': 0.5, 
+    'Liver': 0.5,
+    'Stomach': 0.5,
+    'Arota': 0.5, 
+    'Postcava': 0.5, 
+    'Portal Vein and Splenic Vein': 0.5,
+    'Pancreas': 0.5, 
+    'Right Adrenal Gland': 0.5, 
+    'Left Adrenal Gland': 0.5, 
+    'Duodenum': 0.5, 
+    'Hepatic Vessel': 0.5,
+    'Right Lung': 0.5, 
+    'Left Lung': 0.5, 
+    'Colon': 0.5, 
+    'Intestine': 0.5, 
+    'Rectum': 0.5, 
+    'Bladder': 0.5, 
+    'Prostate': 0.5, 
+    'Left Head of Femur': 0.5, 
+    'Right Head of Femur': 0.5, 
+    'Celiac Truck': 0.5,
+    'Kidney Tumor': 0.5, 
+    'Liver Tumor': 0.5, 
+    'Pancreas Tumor': 0.5, 
+    'Hepatic Vessel Tumor': 0.5, 
+    'Lung Tumor': 0.5, 
+    'Colon Tumor': 0.5, 
+    'Kidney Cyst': 0.5
+}
 
 class BinaryMaskd(MapTransform):
     def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
@@ -690,3 +724,51 @@ class AddEmptySignalChannels(MapTransform):
             data[CommonKeys.IMAGE] = inputs
 
         return data
+
+class ThreshMergeLabeld(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
+        """
+        Normalize label values according to label names dictionary
+
+        Args:
+            keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+            label_names: all label names
+        """
+        super().__init__(keys, allow_missing_keys)
+
+
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]) -> Dict[Hashable, NdarrayOrTensor]:
+        d: Dict = dict(data)
+        class_prompts = d.get("class_prompts", None)
+        for key in self.key_iterator(d):
+            C, W, H, D = d[key].shape
+
+            threshold_list = []
+            if class_prompts:
+                for organ in class_prompts:
+                    for idx, k in enumerate(THRESHOLD_DIC.keys()):
+                        if organ == idx:
+                            threshold_list.append(THRESHOLD_DIC[k])
+            else:
+                for k, value in THRESHOLD_DIC.items():
+                    threshold_list.append(value)
+                threshold_list = [0.5] * 104
+            threshold_list = torch.tensor(threshold_list).repeat(1).reshape(len(threshold_list),1,1,1).cuda()
+
+            pred_hard = d[key] > threshold_list
+
+            print("in post transform before merge pred shape: {}".format(pred_hard.shape))
+            new_pred = torch.zeros(1,W,H,D)
+
+            if class_prompts:
+                for idx, item in enumerate(class_prompts):
+                    new_pred[0][pred_hard[idx]==1] = item+1
+            else:
+                for i in range(d[key].shape[0]):
+                    new_pred[0][pred_hard[i]==1] = i+1
+
+            print("in post transform after merge pred shape: {}".format(new_pred.shape))
+            print("Hey values: {}".format(np.unique(new_pred)))
+
+            d[key] = new_pred
+        return d

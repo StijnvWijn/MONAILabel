@@ -11,7 +11,7 @@
 
 from typing import Callable, Sequence
 
-from lib.basic_infer import BasicInferTask
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from lib.model.vista_point_3d.inferer import VISTAPOINT3DInferer
 from monai.inferers import Inferer
 from monai.transforms import (

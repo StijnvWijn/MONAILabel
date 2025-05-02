@@ -15,7 +15,6 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from lib.model.vista_point_3d.segment_anything3d import sam_model_registry
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
@@ -140,6 +139,8 @@ class VISTAPOINT3D(TaskConfig):
             "urinary_bladder": 104,
         }
 
+        self.conf['pretrained_path'] = 'https://huggingface.co/MONAI/vista3d/blob/main/models'
+
         # Model Files
         self.path = [
             os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
@@ -149,14 +150,14 @@ class VISTAPOINT3D(TaskConfig):
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/monaivista_point_104_sam_3d.pt"
+            url = f"{url}/model.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.5, 1.5, 1.5)  # target space for image
         # Setting ROI size - This is for the image padding
         self.roi_size = (96, 96, 96)
 
-        self.network = sam_model_registry["vista3d_segresnet"](in_channels=1, image_size=self.roi_size)
+        self.network = vista_model_registry["vista3d_segresnet"](in_channels=1, image_size=self.roi_size)
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.VISTAPOINT3D(

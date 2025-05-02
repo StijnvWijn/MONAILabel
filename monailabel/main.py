@@ -278,7 +278,7 @@ class Main:
             os.makedirs(args.studies, exist_ok=True)
 
         args.app = os.path.realpath(args.app)
-        if not args.studies.startswith("http://") and not args.studies.startswith("https://"):
+        if not args.studies.startswith("http://") and not args.studies.startswith("https://") and not args.studies.startswith("/mnt/"):
             args.studies = os.path.realpath(args.studies)
 
         for arg in vars(args):
