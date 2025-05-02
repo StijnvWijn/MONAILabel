@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     MONAI_LABEL_STUDIES: str = ""
     MONAI_LABEL_APP_CONF: Dict[str, Any] = {}
 
-    MONAI_LABEL_AUTH_ENABLE: bool = False
+    MONAI_LABEL_AUTH_ENABLE: bool = True
     MONAI_LABEL_AUTH_REALM_URI: str = ""
     MONAI_LABEL_AUTH_TIMEOUT: int = 10
     MONAI_LABEL_AUTH_TOKEN_USERNAME: str = "preferred_username"
