@@ -17,6 +17,10 @@ def build_vista3d_segresnet_vanila(
     in_channels=1,
     image_size=(96,96,96)  
 ):
+    """
+    Build a VISTA3D model with the most default architectures and values.
+    Equal to the vista3d132 from monai github https://github.com/Project-MONAI/MONAI/blob/707b23054025a26271e6ace9e9477801a71d8e0a/monai/networks/nets/vista3d.py#L35
+    """
     segresnet = SegResNetDS(
             in_channels=in_channels,
             blocks_down=(1, 2, 2, 4, 4),

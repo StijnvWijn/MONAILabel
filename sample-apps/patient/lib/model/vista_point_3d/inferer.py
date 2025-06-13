@@ -80,22 +80,17 @@ class VISTAPOINT3DInferer(Inferer):
 
         network = network.eval()
 
-
-
         if point_prompts is not None:
             point = self.transform_points(point_prompts, np.linalg.inv(inputs['image'].affine[0]) @ inputs['image'].meta['original_affine'][0].numpy())
             vista_sliding_window_inferer = point_based_window_inferer
         else:
             vista_sliding_window_inferer = sliding_window_inference
 
-
-        point_coords = None
         point_label = None
 
         label_prompt  = [i+1 for i in class_prompts]
         # label_prompt = [50]
 
-        point = None
         self.prev_mask = None
 
         pred = vista_sliding_window_inferer(	

@@ -25,11 +25,20 @@ from monai.transforms import (
     Invertd,
     Activationsd,
     AsDiscreted,
+    AsDiscrete,
+    Compose,
+    Resize,
 )
+from monai.data import decollate_batch
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.transform.post import Restored
 import torch
 from lib.transforms.transforms import ThreshMergeLabeld
+from typing import Dict, Any, Union, Tuple
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class VISTAPOINT3D(BasicInferTask):
     """
@@ -41,10 +50,10 @@ class VISTAPOINT3D(BasicInferTask):
         path,
         network=None,
         target_spacing=(1.5, 1.5, 1.5),
-        type=InferType.SEGMENTATION,
+        type=InferType.DEEPGROW,
         labels=None,
-        dimension=2,
-        description="A pre-trained model for volumetric (2.5D) segmentation of the monai vista",
+        dimension=3,
+        description="A pre-trained model for volumetric segmentation using VISTA3D",
         **kwargs,
     ):
         super().__init__(
@@ -67,12 +76,52 @@ class VISTAPOINT3D(BasicInferTask):
             EnsureChannelFirstd(keys="image"),
             ScaleIntensityRanged(keys="image", a_min=-963.8247715525971, a_max=1053.678477684517, b_min=0.0, b_max=1.0, clip=True),
             Orientationd(keys="image", axcodes="RAS"),
-            Spacingd(keys="image", pixdim=(1.5,1.5,1.5), mode="bilinear", align_corners=True),
+            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear", align_corners=True),
             CastToTyped(keys="image", dtype=torch.float32),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return VISTAPOINT3DInferer(device=data.get("device") if data else None)
+    
+    def run_inferer(self, data: Dict[str, Any], convert_to_batch=True, device="cuda"):
+        """
+        Run Inferer over pre-processed Data.  Derive this logic to customize the normal behavior.
+        In some cases, you want to implement your own for running chained inferers over pre-processed data
+
+        :param data: pre-processed data
+        :param convert_to_batch: convert input to batched input
+        :param device: device type run load the model and run inferer
+        :return: updated data with output_key stored that will be used for post-processing
+        """
+
+        inferer = self.inferer(data)
+        logger.info(f"Inferer:: {device} => {inferer.__class__.__name__} => {inferer.__dict__}")
+
+        network = self._get_network(device, data)
+        
+        inputs = data[self.input_key]
+        class_prompt = data.get("label", None)
+        foreground_points = data.get("foreground", [])
+        background_points = data.get("background", [])
+        inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
+        inputs = inputs[None] if convert_to_batch else inputs
+        inputs = inputs.to(torch.device(device))
+
+        with torch.no_grad():
+            outputs = inferer(inputs, network, point_prompts=foreground_points, class_prompts=class_prompt)
+
+        if device.startswith("cuda"):
+            torch.cuda.empty_cache()
+
+        if convert_to_batch:
+            if isinstance(outputs, dict):
+                outputs_d = decollate_batch(outputs)
+                outputs = outputs_d[0]
+            else:
+                outputs = outputs[0]
+
+        data[self.output_label_key] = outputs
+        return data
 
     def inverse_transforms(self, data=None):
         return []
