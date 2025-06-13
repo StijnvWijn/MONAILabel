@@ -50,6 +50,7 @@ class VISTAPOINT3D(BasicInferTask):
         path,
         network=None,
         target_spacing=(1.5, 1.5, 1.5),
+        roi_size=(96, 96, 96),
         type=InferType.DEEPGROW,
         labels=None,
         dimension=3,
@@ -66,6 +67,7 @@ class VISTAPOINT3D(BasicInferTask):
             **kwargs,
         )
         self.target_spacing = target_spacing
+        self.roi_size = roi_size
 
     def is_valid(self) -> bool:
         return True
@@ -81,7 +83,7 @@ class VISTAPOINT3D(BasicInferTask):
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return VISTAPOINT3DInferer(device=data.get("device") if data else None)
+        return VISTAPOINT3DInferer(device=data.get("device") if data else None, roi_size=self.roi_size)
     
     def run_inferer(self, data: Dict[str, Any], convert_to_batch=True, device="cuda"):
         """

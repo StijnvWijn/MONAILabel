@@ -157,12 +157,14 @@ class VISTAPOINT3D(TaskConfig):
         # Setting ROI size - This is for the image padding
         self.roi_size = (128, 128, 128)
 
-        self.network = vista_model_registry["vista3d132"](in_channels=1, image_size=self.roi_size)
+        self.network = vista_model_registry["build_vista3d_segresnet_vanila"](in_channels=1, image_size=self.roi_size)
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.VISTAPOINT3D(
             path=self.path,
             network=self.network,
+            target_spacing=self.target_spacing,
+            roi_size=self.roi_size,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
         )

@@ -43,11 +43,13 @@ class VISTAPOINT3DInferer(Inferer):
         device: torch.device | str | None = None,
         progress: bool = False,
         cpu_thresh: int | None = None,
+        roi_size: Sequence[int] = (96, 96, 96),
     ) -> None:
         super().__init__()
         self.device = device
         self.progress = progress
         self.cpu_thresh = cpu_thresh
+        self.roi_size = roi_size
 
     def __call__(
         self,
@@ -81,7 +83,7 @@ class VISTAPOINT3DInferer(Inferer):
         network = network.eval()
 
         if point_prompts is not None:
-            point = self.transform_points(point_prompts, np.linalg.inv(inputs['image'].affine[0]) @ inputs['image'].meta['original_affine'][0].numpy())
+            point = self.transform_points(point_prompts, np.linalg.inv(inputs.affine[0]) @ inputs.meta['original_affine'][0].numpy())
             vista_sliding_window_inferer = point_based_window_inferer
         else:
             vista_sliding_window_inferer = sliding_window_inference
@@ -95,7 +97,7 @@ class VISTAPOINT3DInferer(Inferer):
 
         pred = vista_sliding_window_inferer(	
             inputs=inputs,	
-            roi_size=[96, 96, 96],	
+            roi_size=self.roi_size,	
             sw_batch_size=1,	
             predictor=partial(infer_wrapper, model=network),	
             mode="gaussian",	
