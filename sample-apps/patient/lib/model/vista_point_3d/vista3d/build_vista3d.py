@@ -4,6 +4,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import monai.networks
 import torch
 import torch.nn as nn
 import pdb
@@ -104,11 +105,14 @@ def build_vista3d_swinunetr_gap(
     )
     return vista
 
+def build_vista3d132(encoder_embed_dim=48, in_channels=1, **kwargs):
+    return monai.networks.nets.vista3d132(in_channels=in_channels, encoder_embed_dim=encoder_embed_dim)
 
 
 vista_model_registry = {
     "vista3d_segresnet": build_vista3d_segresnet_vanila,
     "vista3d_swinunetr": build_vista3d_swinunetr_vanila,
-    "vista3d_swinunetr_gap": build_vista3d_swinunetr_gap
+    "vista3d_swinunetr_gap": build_vista3d_swinunetr_gap,
+    "vista3d132": build_vista3d132
 }
 

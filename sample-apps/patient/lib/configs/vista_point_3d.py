@@ -139,7 +139,7 @@ class VISTAPOINT3D(TaskConfig):
             "urinary_bladder": 104,
         }
 
-        self.conf['pretrained_path'] = 'https://huggingface.co/MONAI/vista3d/blob/main/models'
+        self.conf['pretrained_path'] = 'https://huggingface.co/MONAI/vista3d/resolve/0.5.8/models'
 
         # Model Files
         self.path = [
@@ -155,9 +155,9 @@ class VISTAPOINT3D(TaskConfig):
 
         self.target_spacing = (1.5, 1.5, 1.5)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 96)
+        self.roi_size = (128, 128, 128)
 
-        self.network = vista_model_registry["vista3d_segresnet"](in_channels=1, image_size=self.roi_size)
+        self.network = vista_model_registry["vista3d132"](in_channels=1, image_size=self.roi_size)
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.VISTAPOINT3D(
