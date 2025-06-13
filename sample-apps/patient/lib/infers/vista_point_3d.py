@@ -102,15 +102,23 @@ class VISTAPOINT3D(BasicInferTask):
         network = self._get_network(device, data)
         
         inputs = data[self.input_key]
-        class_prompt = data.get("label", None)
+        # point prompts are given separately in the data from the UI
         foreground_points = data.get("foreground", [])
         background_points = data.get("background", [])
+        # VISTA3D expects points in the format [bs, N, 3], with the foreground and background points concatenated
+        point_prompts = foreground_points + background_points
+        # We label foreground points as 1 and background points as 0, as required by VISTA3D
+        point_labels = [1] * len(foreground_points) + [0] * len(background_points)
         inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
         inputs = inputs[None] if convert_to_batch else inputs
         inputs = inputs.to(torch.device(device))
+        # label prompt is given as a str that corresponds to a label in the labels dict
+        label_prompt = data.get("label", None)
+        class_prompt = self.labels.get(label_prompt, -1) if label_prompt is not None else None
+        class_prompt = [class_prompt]
 
         with torch.no_grad():
-            outputs = inferer(inputs, network, point_prompts=foreground_points, class_prompts=class_prompt)
+            outputs = inferer(inputs, network, point_prompts=point_prompts, point_labels=point_labels, class_prompts=class_prompt)
 
         if device.startswith("cuda"):
             torch.cuda.empty_cache()
