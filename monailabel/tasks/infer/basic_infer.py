@@ -416,7 +416,9 @@ class BasicInferTask(InferTask):
 
         d = copy.deepcopy(dict(data))
         d[self.input_key] = data[self.output_label_key]
-
+        # Throws error, because the input image does not have the meta information from the applied transforms
+        # TODO: Fix this issue
+        
         d = run_transforms(d, transforms, inverse=True, log_prefix="INV")
         data[self.output_label_key] = d[self.input_key]
         return data

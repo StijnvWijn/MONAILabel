@@ -249,7 +249,7 @@ def _point_based_window_inferer(inputs, roi_size, sw_batch_size,  predictor, mod
                        point_coords=point_coords,
                        point_labels=point_labels,
                        class_vector=class_vector,
-                       patch_coords=unravel_slice,
+                       patch_coords=[unravel_slice],
                        masks=masks,
                        point_mask=point_mask)
         if stitched_output is None:
@@ -278,7 +278,7 @@ def point_based_window_inferer(inputs, roi_size, sw_batch_size,  predictor, mode
                        point_coords=point_coords,
                        point_labels=point_labels,
                        class_vector=class_vector,
-                       patch_coords=unravel_slice,
+                       patch_coords=[unravel_slice],
                        masks=masks,
                        point_mask=point_mask).transpose(1,0)
         stitched_output[unravel_slice] += output.to(device)

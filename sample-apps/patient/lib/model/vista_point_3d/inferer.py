@@ -80,7 +80,9 @@ class VISTAPOINT3DInferer(Inferer):
         if device is None and self.cpu_thresh is not None and inputs.shape[2:].numel() > self.cpu_thresh:
             device = "cpu"  # stitch in cpu memory if image is too large
 
+        # Inferer requires inputs to have a batch dimension.
         point_prompts = np.expand_dims(np.array(point_prompts), axis=0)
+        point_labels = np.expand_dims(np.array(point_labels), axis=0)
         network = network.eval()
 
         if point_prompts is not None:
