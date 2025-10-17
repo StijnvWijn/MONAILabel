@@ -72,25 +72,26 @@ class VISTAPOINT3DInferer(Inferer):
         """
 
         device = kwargs.pop("device", self.device)
-        point_prompts = kwargs.pop("point_prompts")
+        point_prompts = kwargs.pop("point_prompts", None)
         point_labels = kwargs.pop("point_labels", [1] * len(point_prompts))
         class_prompts = kwargs.pop("class_prompts")
-        print("point_prompts: {}".format(point_prompts))
+        logger.info(f"point_prompts: {point_prompts} and class prompts: {class_prompts}")
 
         if device is None and self.cpu_thresh is not None and inputs.shape[2:].numel() > self.cpu_thresh:
             device = "cpu"  # stitch in cpu memory if image is too large
 
         point_prompts = np.expand_dims(np.array(point_prompts), axis=0)
+        point_labels = np.expand_dims(np.array(point_labels), axis=0)
         network = network.eval()
 
-        if point_prompts is not None:
-            point = self.transform_points(point_prompts, np.linalg.inv(inputs.affine) @ inputs.meta['original_affine'])
+        if point_prompts is not None and len(point_prompts[0]) != 0:
+            point = self.transform_points(point_prompts, np.linalg.inv(inputs.affine) @ inputs.meta['original_affine']) #
             vista_sliding_window_inferer = point_based_window_inferer
         else:
             vista_sliding_window_inferer = sliding_window_inference
+            point = None
 
-        label_prompt  = [i+1 for i in class_prompts]
-        # label_prompt = [50]
+        label_prompt  = class_prompts
 
         self.prev_mask = None
 
@@ -118,6 +119,8 @@ class VISTAPOINT3DInferer(Inferer):
 
         out_list = torch.unbind(pred, dim=0)
         y_pred = torch.stack(post_pred_thresh(out_list)).float()
+
+        logger.info(f"Reconstructed image with {y_pred}, total volume {y_pred.sum()}")
 
         return y_pred
 

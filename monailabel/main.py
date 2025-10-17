@@ -254,6 +254,7 @@ class Main:
             ssl_ca_certs=args.ssl_ca_certs,
             workers=args.workers,
             limit_concurrency=args.limit_concurrency,
+            reload=True,
         )
 
     def start_server_validate_args(self, args):

@@ -74,12 +74,12 @@ class VISTAPOINT3D(BasicInferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image"),
-            EnsureChannelFirstd(keys="image"),
-            ScaleIntensityRanged(keys="image", a_min=-963.8247715525971, a_max=1053.678477684517, b_min=0.0, b_max=1.0, clip=True),
-            Orientationd(keys="image", axcodes="RAS"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear", align_corners=True),
-            CastToTyped(keys="image", dtype=torch.float32),
+            LoadImaged(keys=self.input_key),
+            EnsureChannelFirstd(keys=self.input_key),
+            ScaleIntensityRanged(keys=self.input_key, a_min=-963.8247715525971, a_max=1053.678477684517, b_min=0.0, b_max=1.0, clip=True),
+            Orientationd(keys=[self.input_key, self.output_label_key], axcodes="RAS", allow_missing_keys=True),
+            Spacingd(keys=[self.input_key, self.output_label_key], pixdim=self.target_spacing, mode=["bilinear", "nearest"], align_corners=True, allow_missing_keys=True),
+            CastToTyped(keys=self.input_key, dtype=torch.float32),
         ]
 
     def inferer(self, data=None) -> Inferer:
@@ -117,6 +117,8 @@ class VISTAPOINT3D(BasicInferTask):
         class_prompt = self.labels.get(label_prompt, -1) if label_prompt is not None else None
         class_prompt = [class_prompt]
 
+        logger.info(f"Received data {data} to run inference, extracted input {inputs.shape}")
+
         with torch.no_grad():
             outputs = inferer(inputs, network, point_prompts=point_prompts, point_labels=point_labels, class_prompts=class_prompt)
 
@@ -130,7 +132,10 @@ class VISTAPOINT3D(BasicInferTask):
             else:
                 outputs = outputs[0]
 
+        logger.info(f"Ran inference on {inputs.shape}, resulting in {outputs.shape}, amount {outputs.sum()}")
+
         data[self.output_label_key] = outputs
+        data[self.output_label_key].applied_operations = data[self.input_key].applied_operations
         return data
 
     def inverse_transforms(self, data=None):
@@ -138,11 +143,11 @@ class VISTAPOINT3D(BasicInferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
+            EnsureTyped(keys=self.output_label_key, device=data.get("device") if data else None),
             # Invertd(	
-            #     keys="pred",	
+            #     keys=self.output_label_key,	
             #     transform=self.infer_transforms,	
-            #     orig_keys="image",	
+            #     orig_keys=self.input_key,	
             #     meta_keys="pred_meta_dict",	
             #     orig_meta_keys="image_meta_dict",	
             #     meta_key_postfix="meta_dict",	
@@ -150,14 +155,14 @@ class VISTAPOINT3D(BasicInferTask):
             #     to_tensor=True
             # ),	
             # Activationsd(	
-            #     keys="pred",	
+            #     keys=self.output_label_key,	
             #     softmax=False,	
             #     sigmoid=True
             # ),
             # AsDiscreted(
-            #     keys="pred",
+            #     keys=self.output_label_key,
             #     threshold=0.5
             # ),
-            ThreshMergeLabeld(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
+            ThreshMergeLabeld(keys=self.output_label_key),
+            Restored(keys=self.output_label_key, ref_image=self.input_key),
         ]

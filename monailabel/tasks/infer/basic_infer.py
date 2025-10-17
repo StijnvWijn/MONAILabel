@@ -311,16 +311,22 @@ class BasicInferTask(InferTask):
         latency_inferer = time.time() - start
 
         start = time.time()
+        logger.info(f"Got inferred transform {data['pred'].sum()}")
+        logger.info(pre_transforms)
         data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms(data))
         if callback_run_invert_transforms:
             data = callback_run_invert_transforms(data)
         latency_invert = time.time() - start
+
+        logger.info(f"Got invert transform {data['pred'].sum()}")
 
         start = time.time()
         data = self.run_post_transforms(data, self.post_transforms(data))
         if callback_run_post_transforms:
             data = callback_run_post_transforms(data)
         latency_post = time.time() - start
+
+        logger.info(f"Got post transform {data['pred'].sum()}")
 
         if self.skip_writer or strtobool(data.get("skip_writer")):
             return None, dict(data)
@@ -412,13 +418,13 @@ class BasicInferTask(InferTask):
 
         # Run only selected/given
         if len(names) > 0:
-            transforms = [pre_transforms[n if isinstance(n, str) else n.__name__] for n in names]
+            transforms = [pre_names[n if isinstance(n, str) else n.__name__] for n in names]
 
         d = copy.deepcopy(dict(data))
-        d[self.input_key] = data[self.output_label_key]
+        #d[self.input_key] = data[self.output_label_key]
 
         d = run_transforms(d, transforms, inverse=True, log_prefix="INV")
-        data[self.output_label_key] = d[self.input_key]
+        #data[self.output_label_key] = d[self.input_key]
         return data
 
     def run_post_transforms(self, data: Dict[str, Any], transforms):
