@@ -114,7 +114,7 @@ class VISTAPOINT3D(BasicInferTask):
         inputs = inputs.to(torch.device(device))
         # label prompt is given as a str that corresponds to a label in the labels dict
         label_prompt = data.get("label", None)
-        class_prompt = self.labels.get(label_prompt, -1) if label_prompt is not None else None
+        class_prompt = self.labels.get(label_prompt, None) if label_prompt is not None else None
         class_prompt = [class_prompt]
 
         logger.info(f"Received data {data} to run inference, extracted input {inputs.shape}")

@@ -74,7 +74,7 @@ class VISTAPOINT3DInferer(Inferer):
         device = kwargs.pop("device", self.device)
         point_prompts = kwargs.pop("point_prompts", None)
         point_labels = kwargs.pop("point_labels", [1] * len(point_prompts))
-        class_prompts = kwargs.pop("class_prompts")
+        class_prompts = kwargs.pop("class_prompts", None)
         logger.info(f"point_prompts: {point_prompts} and class prompts: {class_prompts}")
 
         if device is None and self.cpu_thresh is not None and inputs.shape[2:].numel() > self.cpu_thresh:
