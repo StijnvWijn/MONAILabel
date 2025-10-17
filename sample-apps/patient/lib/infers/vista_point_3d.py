@@ -139,7 +139,7 @@ class VISTAPOINT3D(BasicInferTask):
         return data
 
     def inverse_transforms(self, data=None):
-        return self.pre_transforms(data)
+        return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
